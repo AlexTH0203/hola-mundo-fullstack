@@ -1,16 +1,42 @@
-# React + Vite
+# Hola Fullstack – Lista de tareas
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Proyecto dividido en **dos carpetas independientes**: backend y frontend, cada una con su propio Terraform.
 
-Currently, two official plugins are available:
+## Estructura actual
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+```
+hola-fullstack/
+├── backend/          ← Proyecto backend (API + DynamoDB + Lambda)
+│   ├── main.tf
+│   ├── lambda/tasks-api/
+│   └── README.md
+├── frontend/        ← Proyecto frontend (React + Amplify)
+│   ├── main.tf
+│   ├── src/
+│   ├── package.json
+│   └── README.md
+└── README.md        (este archivo)
+```
 
-## React Compiler
+## Orden de despliegue
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+1. **Backend** (primero, una vez o cuando cambies la API/Lambda):
+   ```bash
+   cd backend
+   cd lambda/tasks-api && npm install && cd ../..
+   terraform init
+   terraform apply
+   ```
 
-## Expanding the ESLint configuration
+2. **Frontend** (después; requiere la URL del backend):
+   ```bash
+   cd frontend
+   terraform init
+   terraform apply -var="api_url=$(cd ../backend && terraform output -raw api_url)" -var="github_token=TU_TOKEN"
+   ```
+   O pon `api_url` y `github_token` en `terraform.tfvars`.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Código y despliegue automático
+
+- **Backend:** para actualizar la Lambda tras cambiar código en `backend/lambda/tasks-api/`, ejecuta `terraform apply` en `backend/`. No hay autodespliegue al hacer push (opcional: añadir GitHub Actions).
+- **Frontend:** el **código** React se despliega automáticamente en cada **git push** a la rama que Amplify vigila (build en la nube).
