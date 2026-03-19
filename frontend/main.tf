@@ -34,7 +34,7 @@ variable "github_token" {
 variable "repository" {
   description = "URL del repositorio Git del frontend"
   type        = string
-  default     = "https://github.com/javiercl/vite-hola-fullstack.git"
+  default     = "https://github.com/AlexTH0203/hola-mundo-fullstack"
 }
 
 variable "branch_name" {
@@ -62,21 +62,23 @@ resource "aws_amplify_app" "hola_fullstack" {
 
   build_spec = <<-EOT
 version: 1
-frontend:
-  phases:
-    preBuild:
-      commands:
-        - npm ci
-    build:
-      commands:
-        - npm run build
-  artifacts:
-    baseDirectory: dist
-    files:
-      - '**/*'
-  cache:
-    paths:
-      - node_modules/**/*
+applications:
+  - appRoot: frontend
+    frontend:
+      phases:
+        preBuild:
+          commands:
+            - npm install
+        build:
+          commands:
+            - npm run build
+      artifacts:
+        baseDirectory: dist
+        files:
+          - '**/*'
+      cache:
+        paths:
+          - node_modules/**/*
 EOT
 
   custom_rule {
