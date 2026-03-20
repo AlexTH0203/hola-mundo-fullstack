@@ -63,7 +63,7 @@ resource "aws_amplify_app" "hola_fullstack" {
   build_spec = <<-EOT
 version: 1
 applications:
-  - appRoot: frontend
+  - appRoot: ${var.app_root != "" ? var.app_root : "."}
     frontend:
       phases:
         preBuild:
