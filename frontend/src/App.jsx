@@ -1,9 +1,35 @@
 import { useState, useEffect } from 'react'
+// 1. Importaciones de AWS Amplify
+import { Amplify } from 'aws-amplify'
+import { Authenticator, useAuthenticator } from '@aws-amplify/ui-react'
+import '@aws-amplify/ui-react/styles.css'
 import './App.css'
 
-const API_BASE = import.meta.env.VITE_API_URL || ''
+// 2. Configuración (Tus IDs reales)
+Amplify.configure({
+  Auth: {
+    Cognito: {
+      userPoolId: 'us-east-1_Z4EzZ84Qw',
+      userPoolClientId: '7bjuvhqku7ckfvegru5l1l8ogd',
+    }
+  }
+});
+
+const API_BASE = "https://8iu9v78txc.execute-api.us-east-1.amazonaws.com/"
 
 function App() {
+  // --- LÓGICA DE AUTENTICACIÓN ---
+  const { user, signOut, authStatus } = useAuthenticator((context) => [context.authStatus, context.user]);
+  const [showLoginSection, setShowLoginSection] = useState(false); 
+
+  // Efecto para cerrar el login automáticamente al entrar
+  useEffect(() => {
+    if (authStatus === 'authenticated') {
+      setShowLoginSection(false); 
+    }
+  }, [authStatus]);
+
+  // --- LÓGICA DE TAREAS (ESTADO ORIGINAL COMPLETO) ---
   const [tasks, setTasks] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -12,9 +38,10 @@ function App() {
   const [editingId, setEditingId] = useState(null)
   const [editingTitle, setEditingTitle] = useState('')
 
+  // --- FUNCIONES ORIGINALES (SIN RECORTES) ---
   async function fetchTasks() {
     if (!API_BASE) {
-      setError('Configura VITE_API_URL (ej. en .env) con la URL de la API.')
+      setError('Configura la URL de la API.')
       setLoading(false)
       return
     }
@@ -38,6 +65,9 @@ function App() {
 
   async function addTask(e) {
     e.preventDefault()
+    // PROTECCIÓN: Solo si está autenticado
+    if (authStatus !== 'authenticated') return;
+
     const title = newTaskTitle.trim()
     if (!title || !API_BASE || adding) return
     setAdding(true)
@@ -59,6 +89,8 @@ function App() {
   }
 
   async function toggleCompleted(task) {
+    // PROTECCIÓN: Solo si está autenticado
+    if (authStatus !== 'authenticated') return;
     if (!API_BASE) return
     setError(null)
     try {
@@ -75,6 +107,8 @@ function App() {
   }
 
   async function saveEdit(id) {
+    // PROTECCIÓN: Solo si está autenticado
+    if (authStatus !== 'authenticated') return;
     const title = editingTitle.trim()
     if (title === '' || !API_BASE) return
     setError(null)
@@ -94,6 +128,8 @@ function App() {
   }
 
   async function deleteTask(id) {
+    // PROTECCIÓN: Solo si está autenticado
+    if (authStatus !== 'authenticated') return;
     if (!API_BASE || !window.confirm('¿Eliminar esta tarea?')) return
     setError(null)
     try {
@@ -106,6 +142,7 @@ function App() {
   }
 
   function startEdit(task) {
+    if (authStatus !== 'authenticated') return;
     setEditingId(task.id)
     setEditingTitle(task.title)
   }
@@ -117,97 +154,96 @@ function App() {
 
   return (
     <div className="app">
-      <h1>Lista de tareas</h1>
-
-      <form className="add-form" onSubmit={addTask}>
-        <input
-          type="text"
-          placeholder="Nueva tarea..."
-          value={newTaskTitle}
-          onChange={(e) => setNewTaskTitle(e.target.value)}
-          disabled={!API_BASE || adding}
-          aria-label="Título de la nueva tarea"
-        />
-        <button type="submit" disabled={!newTaskTitle.trim() || adding}>
-          {adding ? 'Añadiendo…' : 'Añadir'}
-        </button>
-      </form>
-
-      {error && <p className="error">{error}</p>}
-
-      {loading ? (
-        <p className="loading">Cargando tareas…</p>
-      ) : (
-        <ul className="task-list">
-          {tasks.length === 0 && !error && (
-            <li className="empty">No hay tareas. Añade una arriba.</li>
+      <header className="app-header">
+        <h1>Organizador Pro v2.0 🚀</h1>
+        
+        <div className="user-controls">
+          {authStatus === 'authenticated' ? (
+            <>
+              <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>👤 {user?.username}</span>
+              <button onClick={signOut} className="btn-small danger">Salir</button>
+            </>
+          ) : (
+            <button onClick={() => setShowLoginSection(!showLoginSection)} className="btn-small primary">
+              {showLoginSection ? 'Cancelar Registro' : 'Entrar / Registrarse'}
+            </button>
           )}
-          {tasks.map((task) => (
-            <li
-              key={task.id}
-              className={`task ${task.completed ? 'completed' : ''}`}
-            >
-              <input
-                type="checkbox"
-                checked={task.completed}
-                onChange={() => toggleCompleted(task)}
-                disabled={!API_BASE}
-                aria-label={`Marcar como ${task.completed ? 'pendiente' : 'completada'}`}
-              />
-              {editingId === task.id ? (
-                <>
-                  <input
-                    type="text"
-                    className="edit-input"
-                    value={editingTitle}
-                    onChange={(e) => setEditingTitle(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') saveEdit(task.id)
-                      if (e.key === 'Escape') cancelEdit()
-                    }}
-                    autoFocus
-                    aria-label="Editar título"
-                  />
-                  <button
-                    type="button"
-                    className="btn-small primary"
-                    onClick={() => saveEdit(task.id)}
-                  >
-                    Guardar
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-small"
-                    onClick={cancelEdit}
-                  >
-                    Cancelar
-                  </button>
-                </>
-              ) : (
-                <>
-                  <span className="task-title">{task.title}</span>
-                  <button
-                    type="button"
-                    className="btn-small"
-                    onClick={() => startEdit(task)}
-                    disabled={!API_BASE}
-                  >
-                    Editar
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-small danger"
-                    onClick={() => deleteTask(task.id)}
-                    disabled={!API_BASE}
-                  >
-                    Eliminar
-                  </button>
-                </>
-              )}
-            </li>
-          ))}
-        </ul>
+        </div>
+      </header>
+
+      {/* SECCIÓN DE AUTENTICACIÓN - Centrada vía CSS */}
+      {showLoginSection && authStatus !== 'authenticated' && (
+        <div className="auth-card-container">
+          <Authenticator />
+        </div>
       )}
+
+      <main style={{ 
+        opacity: (showLoginSection && authStatus !== 'authenticated') ? 0.1 : 1,
+        pointerEvents: (showLoginSection && authStatus !== 'authenticated') ? 'none' : 'auto',
+        transition: 'all 0.4s ease'
+      }}>
+        
+        <form className="add-form" onSubmit={addTask}>
+          <input
+            type="text"
+            placeholder={authStatus === 'authenticated' ? "Escribe una nueva tarea..." : "Inicia sesión para editar"}
+            value={newTaskTitle}
+            onChange={(e) => setNewTaskTitle(e.target.value)}
+            disabled={adding || authStatus !== 'authenticated'}
+          />
+          <button type="submit" className="btn-small primary" disabled={!newTaskTitle.trim() || adding || authStatus !== 'authenticated'}>
+            {adding ? '...' : 'Añadir'}
+          </button>
+        </form>
+
+        {error && <p className="error" style={{color: 'var(--danger)', textAlign: 'center'}}>{error}</p>}
+
+        {loading ? (
+          <p className="loading" style={{textAlign: 'center', color: 'var(--text-dim)'}}>Cargando tus tareas...</p>
+        ) : (
+          <ul className="task-list" style={{listStyle: 'none', padding: 0}}>
+            {tasks.length === 0 && !error && (
+              <li style={{textAlign: 'center', color: 'var(--text-dim)', marginTop: '20px'}}>No hay tareas disponibles.</li>
+            )}
+            {tasks.map((task) => (
+              <li key={task.id} className={`task ${task.completed ? 'completed' : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={task.completed}
+                  onChange={() => toggleCompleted(task)}
+                  disabled={authStatus !== 'authenticated'}
+                />
+
+                {editingId === task.id ? (
+                  <div style={{display: 'flex', gap: '8px', flex: 1}}>
+                    <input
+                      type="text"
+                      className="edit-input"
+                      style={{background: '#000', border: '1px solid var(--primary-color)', color: '#fff', padding: '5px', borderRadius: '8px', flex: 1}}
+                      value={editingTitle}
+                      onChange={(e) => setEditingTitle(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && saveEdit(task.id)}
+                      autoFocus
+                    />
+                    <button onClick={() => saveEdit(task.id)} className="btn-small primary">OK</button>
+                  </div>
+                ) : (
+                  <>
+                    <span className="task-title">{task.title}</span>
+                    {authStatus === 'authenticated' && (
+                      <div className="actions">
+                        <button onClick={() => startEdit(task)} className="btn-small">✏️</button>
+                        <button onClick={() => deleteTask(task.id)} className="btn-small danger">🗑️</button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </main>
     </div>
   )
 }
