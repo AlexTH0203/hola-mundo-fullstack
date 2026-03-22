@@ -25,6 +25,16 @@ variable "api_url" {
   type        = string
 }
 
+variable "cognito_user_pool_id" {
+  description = "ID del User Pool de Cognito generado por el backend"
+  type        = string
+}
+
+variable "cognito_client_id" {
+  description = "ID del Cliente de Cognito generado por el backend"
+  type        = string
+}
+
 variable "github_token" {
   description = "Token de GitHub para que Amplify clone el repo"
   type        = string
@@ -56,7 +66,11 @@ resource "aws_amplify_app" "hola_fullstack" {
   oauth_token = var.github_token
 
   environment_variables = merge(
-    { VITE_API_URL = var.api_url },
+    { 
+      VITE_API_URL              = var.api_url 
+      VITE_COGNITO_USER_POOL_ID = var.cognito_user_pool_id
+      VITE_COGNITO_CLIENT_ID    = var.cognito_client_id
+    },
     var.app_root != "" ? { AMPLIFY_MONOREPO_APP_ROOT = var.app_root } : {}
   )
 

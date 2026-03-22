@@ -15,8 +15,10 @@ Proyecto independiente: app React que consume la API del **backend**. Despliegue
 
    ```
    VITE_API_URL=https://xxxx.execute-api.us-east-1.amazonaws.com
+   VITE_COGNITO_USER_POOL_ID=us-east-1_xxxxx
+   VITE_COGNITO_CLIENT_ID=xxxxxxxxxxxxxxxxx
    ```
-   (Obtener con `cd ../backend && terraform output -raw api_url`)
+   (Obtener con `cd ../backend && terraform output`)
 
 3. Instalar y ejecutar:
 
@@ -32,11 +34,12 @@ Proyecto independiente: app React que consume la API del **backend**. Despliegue
 
    ```bash
    terraform init
-   terraform apply -var="api_url=URL_DEL_BACKEND" -var="github_token=TU_TOKEN"
+   terraform apply -var="api_url=URL_DEL_BACKEND" -var="cognito_user_pool_id=POOL_ID" -var="cognito_client_id=CLIENT_ID" -var="github_token=TU_TOKEN"
    ```
 
    O crear `terraform.tfvars` con:
    - `api_url` – URL base de la API (salida del backend)
+   - `cognito_user_pool_id` y `cognito_client_id` – Salidas del backend
    - `github_token` – token de GitHub para Amplify
    Opcional: `repository`, `branch_name`, `app_root`.
 

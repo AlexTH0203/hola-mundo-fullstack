@@ -162,7 +162,46 @@ resource "aws_lambda_permission" "apigw" {
   source_arn    = "${aws_apigatewayv2_api.tasks.execution_arn}/*/*"
 }
 
+# ---------------------------------------------------------------------------
+# Cognito: User Pool y Client
+# ---------------------------------------------------------------------------
+resource "aws_cognito_user_pool" "users" {
+  name = "hola-fullstack-users"
+
+  auto_verified_attributes = ["email"]
+  username_attributes      = ["email"]
+
+  password_policy {
+    minimum_length    = 8
+    require_lowercase = true
+    require_numbers   = true
+    require_symbols   = false
+    require_uppercase = true
+  }
+}
+
+resource "aws_cognito_user_pool_client" "client" {
+  name         = "hola-fullstack-client"
+  user_pool_id = aws_cognito_user_pool.users.id
+
+  explicit_auth_flows = [
+    "ALLOW_USER_SRP_AUTH",
+    "ALLOW_REFRESH_TOKEN_AUTH",
+    "ALLOW_USER_PASSWORD_AUTH"
+  ]
+}
+
 output "api_url" {
   description = "URL base de la API de tareas"
   value       = aws_apigatewayv2_stage.default.invoke_url
+}
+
+output "cognito_user_pool_id" {
+  description = "ID del User Pool de Cognito"
+  value       = aws_cognito_user_pool.users.id
+}
+
+output "cognito_client_id" {
+  description = "ID del App Client de Cognito"
+  value       = aws_cognito_user_pool_client.client.id
 }

@@ -5,17 +5,19 @@ import { Authenticator, useAuthenticator } from '@aws-amplify/ui-react'
 import '@aws-amplify/ui-react/styles.css'
 import './App.css'
 
-// 2. Configuración (Tus IDs reales)
+// 2. Configuración (Leyendo desde variables de entorno inyectadas por Terraform)
 Amplify.configure({
   Auth: {
     Cognito: {
-      userPoolId: 'us-east-1_Z4EzZ84Qw',
-      userPoolClientId: '7bjuvhqku7ckfvegru5l1l8ogd',
+      userPoolId: import.meta.env.VITE_COGNITO_USER_POOL_ID || 'us-east-1_Z4EzZ84Qw',
+      userPoolClientId: import.meta.env.VITE_COGNITO_CLIENT_ID || '7bjuvhqku7ckfvegru5l1l8ogd',
     }
   }
 });
 
-const API_BASE = "https://8iu9v78txc.execute-api.us-east-1.amazonaws.com/"
+// Leemos la URL de la API inyectada por Terraform/Amplify (o el archivo .env en local)
+// y eliminamos el slash (/) final si existe para evitar rutas mal formadas como "//tasks"
+const API_BASE = (import.meta.env.VITE_API_URL || "https://8iu9v78txc.execute-api.us-east-1.amazonaws.com").replace(/\/$/, "");
 
 function App() {
   // --- LÓGICA DE AUTENTICACIÓN ---

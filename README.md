@@ -32,9 +32,9 @@ hola-fullstack/
    ```bash
    cd frontend
    terraform init
-   terraform apply -var="api_url=$(cd ../backend && terraform output -raw api_url)" -var="github_token=TU_TOKEN"
+   terraform apply -var="api_url=$(cd ../backend && terraform output -raw api_url)" -var="cognito_user_pool_id=$(cd ../backend && terraform output -raw cognito_user_pool_id)" -var="cognito_client_id=$(cd ../backend && terraform output -raw cognito_client_id)" -var="github_token=TU_TOKEN"
    ```
-   O pon `api_url` y `github_token` en `terraform.tfvars`.
+   O pon `api_url`, variables de cognito y `github_token` en `terraform.tfvars`.
 
 ## Código y despliegue automático
 
