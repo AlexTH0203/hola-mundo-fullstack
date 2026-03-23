@@ -115,7 +115,20 @@ resource "aws_apigatewayv2_api" "tasks" {
   cors_configuration {
     allow_origins = ["*"]
     allow_methods  = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
-    allow_headers  = ["Content-Type"]
+    allow_headers  = ["Content-Type", "Authorization"]
+  }
+}
+
+# Autorizador JWT de Cognito
+resource "aws_apigatewayv2_authorizer" "cognito" {
+  api_id           = aws_apigatewayv2_api.tasks.id
+  authorizer_type  = "JWT"
+  identity_sources = ["$request.header.Authorization"]
+  name             = "cognito-authorizer"
+
+  jwt_configuration {
+    audience = [aws_cognito_user_pool_client.client.id]
+    issuer   = "https://cognito-idp.us-east-1.amazonaws.com/${aws_cognito_user_pool.users.id}"
   }
 }
 
@@ -127,24 +140,48 @@ resource "aws_apigatewayv2_integration" "lambda" {
   payload_format_version = "2.0"
 }
 
-resource "aws_apigatewayv2_route" "proxy" {
+# Ruta pública: Lectura de tareas
+resource "aws_apigatewayv2_route" "get_tasks" {
   api_id    = aws_apigatewayv2_api.tasks.id
-  route_key = "ANY /{proxy+}"
+  route_key = "GET /tasks"
   target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
 }
 
-resource "aws_apigatewayv2_route" "root" {
+# Ruta protegida: Crear tarea
+resource "aws_apigatewayv2_route" "post_tasks" {
   api_id    = aws_apigatewayv2_api.tasks.id
-  route_key = "ANY /"
+  route_key = "POST /tasks"
   target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+# Ruta protegida: Actualizar tarea
+resource "aws_apigatewayv2_route" "put_tasks" {
+  api_id    = aws_apigatewayv2_api.tasks.id
+  route_key = "PUT /tasks/{id}"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+# Ruta protegida: Eliminar tarea
+resource "aws_apigatewayv2_route" "delete_tasks" {
+  api_id    = aws_apigatewayv2_api.tasks.id
+  route_key = "DELETE /tasks/{id}"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
 # Deployment explícito: sin esto el stage $default puede no tener las rutas activas (sobre todo con auto_deploy = false).
 resource "aws_apigatewayv2_deployment" "tasks" {
   api_id = aws_apigatewayv2_api.tasks.id
   depends_on = [
-    aws_apigatewayv2_route.proxy,
-    aws_apigatewayv2_route.root,
+    aws_apigatewayv2_route.get_tasks,
+    aws_apigatewayv2_route.post_tasks,
+    aws_apigatewayv2_route.put_tasks,
+    aws_apigatewayv2_route.delete_tasks,
   ]
 }
 
@@ -152,6 +189,7 @@ resource "aws_apigatewayv2_stage" "default" {
   api_id        = aws_apigatewayv2_api.tasks.id
   name          = "$default"
   deployment_id = aws_apigatewayv2_deployment.tasks.id
+  auto_deploy   = true
 }
 
 resource "aws_lambda_permission" "apigw" {

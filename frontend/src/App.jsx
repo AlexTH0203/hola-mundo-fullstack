@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 // 1. Importaciones de AWS Amplify
 import { Amplify } from 'aws-amplify'
 import { Authenticator, useAuthenticator } from '@aws-amplify/ui-react'
+import { fetchAuthSession } from 'aws-amplify/auth'
 import '@aws-amplify/ui-react/styles.css'
 import './App.css'
 
@@ -40,6 +41,16 @@ function App() {
   const [editingId, setEditingId] = useState(null)
   const [editingTitle, setEditingTitle] = useState('')
 
+  // Función para inyectar el token JWT de Cognito si el usuario está autenticado
+  async function getHeaders() {
+    const headers = { 'Content-Type': 'application/json' };
+    try {
+      const session = await fetchAuthSession();
+      headers['Authorization'] = `Bearer ${session.tokens.idToken.toString()}`;
+    } catch (e) { /* Usuario no autenticado, solo retornará Content-Type */ }
+    return headers;
+  }
+
   // --- FUNCIONES ORIGINALES (SIN RECORTES) ---
   async function fetchTasks() {
     if (!API_BASE) {
@@ -77,12 +88,13 @@ function App() {
     try {
       const res = await fetch(`${API_BASE}/tasks`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await getHeaders(),
         body: JSON.stringify({ title }),
       })
       if (!res.ok) throw new Error(res.statusText)
-      setNewTaskTitle('')
+      // Solo limpiamos el input después de asegurarnos de que se guardó y recargó con éxito
       await fetchTasks()
+      setNewTaskTitle('')
     } catch (err) {
       setError(err.message || 'Error al crear la tarea')
     } finally {
@@ -98,7 +110,7 @@ function App() {
     try {
       const res = await fetch(`${API_BASE}/tasks/${task.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await getHeaders(),
         body: JSON.stringify({ completed: !task.completed }),
       })
       if (!res.ok) throw new Error(res.statusText)
@@ -117,7 +129,7 @@ function App() {
     try {
       const res = await fetch(`${API_BASE}/tasks/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await getHeaders(),
         body: JSON.stringify({ title }),
       })
       if (!res.ok) throw new Error(res.statusText)
@@ -135,7 +147,10 @@ function App() {
     if (!API_BASE || !window.confirm('¿Eliminar esta tarea?')) return
     setError(null)
     try {
-      const res = await fetch(`${API_BASE}/tasks/${id}`, { method: 'DELETE' })
+      const res = await fetch(`${API_BASE}/tasks/${id}`, { 
+        method: 'DELETE',
+        headers: await getHeaders()
+      })
       if (!res.ok) throw new Error(res.statusText)
       await fetchTasks()
     } catch (err) {
